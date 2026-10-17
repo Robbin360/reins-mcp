@@ -11,7 +11,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node build/index.js",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "test:client": "tsx examples/test-client.ts"
   },
   "keywords": [
     "mcp",
@@ -28,7 +29,8 @@
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "tsx": "^4.0.0"
   },
   "engines": {
     "node": ">=20.0.0"
