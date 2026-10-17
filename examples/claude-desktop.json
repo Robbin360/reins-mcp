@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "reins": {
+      "command": "node",
+      "args": ["C:/proyectos/reins-mcp/build/index.js"]
+    }
+  }
+}
