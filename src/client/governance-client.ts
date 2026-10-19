@@ -1,11 +1,3 @@
-/**
- * Thin client for the Reins Platform backend.
- *
- * Today the MCP server evaluates policies locally (see src/types/shared.ts).
- * Once the private backend (reins-platform) is live, this client will forward
- * every decision to it over HTTP, keeping this repo as a thin protocol layer.
- */
-
 export interface ReinsClientConfig {
   apiUrl?: string;
   apiKey?: string;
@@ -21,27 +13,39 @@ export class ReinsClient {
   }
 
   get isRemoteConfigured(): boolean {
-    return Boolean(this.apiUrl && this.apiKey);
+    return Boolean(this.apiUrl);
   }
 
-  async evaluatePolicy(payload: unknown): Promise<unknown> {
-    if (!this.isRemoteConfigured) {
+  async evaluatePolicy(payload: {
+    agent_id: string;
+    category: string;
+    amount: number;
+  }): Promise<{
+    status: "approved" | "pending" | "rejected";
+    decision_by: string;
+    reason: string;
+  } | null> {
+    if (!this.isRemoteConfigured) return null;
+
+    try {
+      const response = await fetch(`${this.apiUrl}/v1/policy/evaluate`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          ...(this.apiKey ? { authorization: `Bearer ${this.apiKey}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        console.error(`Reins API error: ${response.status}`);
+        return null;
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error("Failed to connect to Reins API:", error);
       return null;
     }
-
-    const response = await fetch(`${this.apiUrl}/v1/policy/evaluate`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Reins API error: ${response.status}`);
-    }
-
-    return response.json();
   }
 }

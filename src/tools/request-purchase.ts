@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { evaluatePolicy, type PurchaseCategory } from "../types/shared.js";
+import { ReinsClient } from "../client/governance-client.js";
+import { evaluatePolicy as localEvaluatePolicy } from "../types/shared.js";
 
 export const requestPurchaseSchema = {
   amount: z.number().positive().describe("Amount in USD"),
@@ -13,23 +14,49 @@ export const requestPurchaseSchema = {
 
 export async function handleRequestPurchase(args: {
   amount: number;
-  category: PurchaseCategory;
+  category: string;
   vendor: string;
   reason: string;
   agent_id: string;
 }) {
-  const decision = evaluatePolicy({
+  const apiUrl = process.env.REINS_API_URL;
+  const apiKey = process.env.REINS_API_KEY;
+  const client = new ReinsClient({ apiUrl, apiKey });
+
+  // 1. Intentar usar la API remota si está configurada
+  if (client.isRemoteConfigured) {
+    const remoteDecision = await client.evaluatePolicy({
+      agent_id: args.agent_id,
+      category: args.category,
+      amount: args.amount,
+    });
+
+    if (remoteDecision) {
+      const text = [
+        `PURCHASE_${remoteDecision.status.toUpperCase()}`,
+        `agent:${args.agent_id}`,
+        `amount:${args.amount}`,
+        `vendor:${args.vendor}`,
+        `decision:${remoteDecision.decision_by}`,
+        `message:${remoteDecision.reason}`,
+      ].join(" | ");
+      return { content: [{ type: "text" as const, text }] };
+    }
+  }
+
+  // 2. Fallback a lógica local si no hay API configurada
+  const localDecision = localEvaluatePolicy({
     amount: args.amount,
     category: args.category,
   });
 
   const text = [
-    `PURCHASE_${decision.status.toUpperCase()}`,
+    `PURCHASE_${localDecision.status.toUpperCase()} (LOCAL)`,
     `agent:${args.agent_id}`,
     `amount:${args.amount}`,
     `vendor:${args.vendor}`,
-    `decision:${decision.decisionBy}`,
-    `message:${decision.message}`,
+    `decision:${localDecision.decisionBy}`,
+    `message:${localDecision.message}`,
   ].join(" | ");
 
   return { content: [{ type: "text" as const, text }] };
