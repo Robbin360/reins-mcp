@@ -1,20 +1,24 @@
-import { z } from "zod";
+import { z } from 'zod';
+import { ReinsClient } from '../client/governance-client.js';
 
 export const checkBudgetSchema = {
-  agent_id: z.string().describe("Unique identifier of the agent"),
+  agent_id: z.string().describe('Agent identifier to check budget for'),
 };
 
 export async function handleCheckBudget(args: { agent_id: string }) {
-  const budget = {
-    agent_id: args.agent_id,
-    period: new Date().toISOString().slice(0, 7),
-    currency: "USD",
-    limit: 1000,
-    used: 350,
-    remaining: 650,
-  };
+  const client = new ReinsClient({
+    apiUrl: process.env.REINS_API_URL,
+    apiKey: process.env.REINS_API_KEY,
+  });
 
-  return {
-    content: [{ type: "text" as const, text: JSON.stringify(budget, null, 2) }],
-  };
+  const budget = await client.getBudget(args.agent_id);
+
+  if (!budget || budget.length === 0) {
+    return { content: [{ type: 'text' as const, text: `No budget data for agent ${args.agent_id}` }] };
+  }
+
+  const lines = budget.map((b: any) =>
+    `${b.period} (${b.period_start}): used=$${b.amount_used} approved=$${b.amount_approved} pending=$${b.amount_pending}`
+  );
+  return { content: [{ type: 'text' as const, text: lines.join('\n') }] };
 }

@@ -1,45 +1,49 @@
-export const AUTO_APPROVE_LIMIT_USD = 100;
-export const BLOCKED_CATEGORIES = ["hardware"] as const;
-
-export type PurchaseCategory =
-  | "software"
-  | "hardware"
-  | "services"
-  | "ads"
-  | "infrastructure"
-  | "other";
+export type PurchaseStatus = 'approved' | 'rejected' | 'pending' | 'expired';
+export type Environment = 'staging' | 'production';
+export type Urgency = 'low' | 'normal' | 'critical';
 
 export interface PolicyDecision {
-  status: "approved" | "pending" | "rejected";
+  status: PurchaseStatus;
+  decision_by: string;
+  reason: string;
+  policy_id?: string;
+  expires_at?: string;
+}
+
+export interface PurchaseRequestPayload {
+  agent_id: string;
+  amount: number;
+  category: string;
+  vendor: string;
+  reason?: string;
+  environment?: Environment;
+  urgency?: Urgency;
+}
+
+export interface LocalDecision {
+  status: PurchaseStatus;
   decisionBy: string;
   message: string;
 }
 
-export function evaluatePolicy(args: {
-  amount: number;
-  category: string;
-}): PolicyDecision {
-  const { amount, category } = args;
-
-  if ((BLOCKED_CATEGORIES as readonly string[]).includes(category)) {
+export function evaluatePolicy(data: { amount: number; category: string }): LocalDecision {
+  if (data.category === 'hardware') {
     return {
-      status: "pending",
-      decisionBy: "policy:category_requires_human",
-      message: `Category '${category}' always requires human approval`,
+      status: 'pending',
+      decisionBy: 'policy:category_requires_human',
+      message: "Category 'hardware' always requires human approval",
     };
   }
-
-  if (amount <= AUTO_APPROVE_LIMIT_USD) {
+  if (data.amount <= 100) {
     return {
-      status: "approved",
-      decisionBy: "policy:auto_approve_under_limit",
-      message: `Auto-approved (amount ${amount} <= ${AUTO_APPROVE_LIMIT_USD})`,
+      status: 'approved',
+      decisionBy: 'policy:auto_approve_under_limit',
+      message: `Auto-approved (amount ${data.amount} <= 100)`,
     };
   }
-
   return {
-    status: "pending",
-    decisionBy: "policy:over_auto_approve_limit",
-    message: `Amount ${amount} exceeds auto-approve limit of ${AUTO_APPROVE_LIMIT_USD}`,
+    status: 'pending',
+    decisionBy: 'policy:default',
+    message: 'Amount exceeds auto-approve threshold',
   };
 }

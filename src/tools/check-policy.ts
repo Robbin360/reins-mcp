@@ -1,35 +1,43 @@
-import { z } from "zod";
-import { evaluatePolicy } from "../types/shared.js";
+import { z } from 'zod';
+import { ReinsClient } from '../client/governance-client.js';
 
 export const checkPolicySchema = {
-  action: z
-    .enum(["purchase", "provision_resource", "hire_freelancer"])
-    .describe("Type of action to validate"),
-  amount: z.number().positive().describe("Amount in USD"),
-  category: z.string().describe("Category of the action"),
-  agent_id: z.string().describe("Unique identifier of the agent"),
+  agent_id: z.string().describe('Agent identifier'),
+  amount: z.number().positive().describe('Amount to evaluate'),
+  category: z.string().describe('Category'),
+  vendor: z.string().describe('Vendor'),
+  environment: z.enum(['staging', 'production']).optional(),
+  urgency: z.enum(['low', 'normal', 'critical']).optional(),
 };
 
 export async function handleCheckPolicy(args: {
-  action: string;
+  agent_id: string;
   amount: number;
   category: string;
-  agent_id: string;
+  vendor: string;
+  environment?: string;
+  urgency?: string;
 }) {
-  const decision = evaluatePolicy({
-    amount: args.amount,
-    category: args.category,
+  const client = new ReinsClient({
+    apiUrl: process.env.REINS_API_URL,
+    apiKey: process.env.REINS_API_KEY,
   });
 
-  const result = {
-    action: args.action,
-    agent_id: args.agent_id,
-    allowed: decision.status === "approved",
-    status: decision.status,
-    reason: decision.message,
-  };
+  const decision = await client.evaluatePolicy(args);
 
-  return {
-    content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
-  };
+  if (!decision) {
+    return { content: [{ type: 'text' as const, text: 'Policy engine unavailable' }] };
+  }
+
+  const text = [
+    `POLICY_${decision.status.toUpperCase()}`,
+    `agent:${args.agent_id}`,
+    `amount:${args.amount}`,
+    `category:${args.category}`,
+    `decision:${decision.decision_by}`,
+    `reason:${decision.reason}`,
+    ...(decision.expires_at ? [`expires:${decision.expires_at}`] : []),
+  ].join(' | ');
+
+  return { content: [{ type: 'text' as const, text }] };
 }

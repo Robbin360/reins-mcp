@@ -1,44 +1,24 @@
-import { z } from "zod";
+import { z } from 'zod';
+import { ReinsClient } from '../client/governance-client.js';
 
 export const getAuditTrailSchema = {
-  agent_id: z.string().describe("Unique identifier of the agent"),
-  limit: z
-    .number()
-    .min(1)
-    .max(100)
-    .optional()
-    .default(10)
-    .describe("Number of records to return"),
+  limit: z.number().min(1).max(200).optional().describe('Number of entries to return (default: 20)'),
 };
 
-export async function handleGetAuditTrail(args: {
-  agent_id: string;
-  limit?: number;
-}) {
-  const trail = [
-    {
-      timestamp: "2026-10-15T10:30:00Z",
-      action: "purchase",
-      status: "approved",
-      amount: 45,
-      vendor: "Figma",
-      decision_by: "policy:auto_approve_under_limit",
-    },
-    {
-      timestamp: "2026-10-15T09:15:00Z",
-      action: "purchase",
-      status: "approved",
-      amount: 150,
-      vendor: "OpenAI",
-      decision_by: "human:user@empresa.com",
-    },
-  ];
+export async function handleGetAuditTrail(args: { limit?: number }) {
+  const client = new ReinsClient({
+    apiUrl: process.env.REINS_API_URL,
+    apiKey: process.env.REINS_API_KEY,
+  });
 
-  const limit = args.limit ?? 10;
+  const entries = await client.getAuditTrail(args.limit ?? 20);
 
-  return {
-    content: [
-      { type: "text" as const, text: JSON.stringify(trail.slice(0, limit), null, 2) },
-    ],
-  };
+  if (!entries || entries.length === 0) {
+    return { content: [{ type: 'text' as const, text: 'No audit entries found' }] };
+  }
+
+  const lines = entries.map((e: any) =>
+    `[${e.created_at}] ${e.event_type} | actor:${e.actor} | entity:${e.entity_type}/${e.entity_id} | ${JSON.stringify(e.metadata)}`
+  );
+  return { content: [{ type: 'text' as const, text: lines.join('\n') }] };
 }
