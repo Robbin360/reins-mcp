@@ -3,8 +3,10 @@ export interface ReinsClientConfig {
   apiKey?: string;
 }
 
+export type SensitivityLevel = 'public' | 'internal' | 'confidential' | 'restricted';
+
 export interface PolicyDecision {
-  status: 'approved' | 'pending' | 'rejected';
+  status: 'approved' | 'pending' | 'rejected' | 'expired';
   decision_by: string;
   reason: string;
   policy_id?: string;
@@ -33,10 +35,10 @@ export class ReinsClient {
 
   async evaluatePolicy(payload: {
     agent_id: string;
-    category: string;
-    amount: number;
-    vendor?: string;
-    reason?: string;
+    action_type: string;
+    target_resource: string;
+    sensitivity_level: SensitivityLevel;
+    actor_identity?: string;
     environment?: string;
     urgency?: string;
   }): Promise<PolicyDecision | null> {
@@ -58,14 +60,16 @@ export class ReinsClient {
     }
   }
 
-  async requestPurchase(payload: {
+  async requestAction(payload: {
     agent_id: string;
-    category: string;
-    amount: number;
-    vendor: string;
-    reason?: string;
+    action_type: string;
+    target_resource: string;
+    sensitivity_level: SensitivityLevel;
+    actor_identity?: string;
     environment?: string;
     urgency?: string;
+    reason?: string;
+    organization_id?: string;
   }): Promise<any | null> {
     if (!this.isRemoteConfigured) return null;
     try {
@@ -98,7 +102,7 @@ export class ReinsClient {
     }
   }
 
-  async getPurchase(id: string): Promise<any | null> {
+  async getAction(id: string): Promise<any | null> {
     if (!this.isRemoteConfigured) return null;
     try {
       const res = await fetch(`${this.apiUrl}/v1/purchases/${id}`, {
