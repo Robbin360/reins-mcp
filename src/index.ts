@@ -6,6 +6,15 @@ import { requestActionSchema, handleRequestAction } from './tools/request-action
 import { checkPolicySchema, handleCheckPolicy } from './tools/check-policy.js';
 import { getAuditTrailSchema, handleGetAuditTrail } from './tools/get-audit-trail.js';
 
+const mask = (value?: string) => {
+  if (!value) return 'undefined';
+  return value.slice(0, 8) + '***';
+};
+
+console.error(
+  `Reins MCP boot: url=${process.env.REINS_API_URL ?? 'undefined'} key=${mask(process.env.REINS_API_KEY)}`
+);
+
 const server = new McpServer({ name: 'reins', version: '0.3.0' });
 
 server.tool('request_action', 'Request an action execution through the security gateway (evaluates blast radius, sensitivity and identity)', requestActionSchema, handleRequestAction);

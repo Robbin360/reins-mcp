@@ -33,15 +33,20 @@ export async function handleRequestAction(args: {
     return { content: [{ type: 'text' as const, text: 'Policy engine unavailable' }] };
   }
 
+  const isDemo = result.demo === true;
+  const reason = result.decision_reason ?? result.reason ?? 'unknown';
+
   const text = [
     `ACTION_${result.status.toUpperCase()}`,
+    isDemo ? '[DRY-RUN]' : '[LIVE]',
     `agent:${args.agent_id}`,
     `action:${args.action_type}`,
     `resource:${args.target_resource}`,
     `sensitivity:${args.sensitivity_level}`,
     `decision:${result.decision_by}`,
-    `reason:${result.decision_reason ?? result.decision?.reason}`,
+    `reason:${reason}`,
     ...(result.expires_at ? [`expires:${result.expires_at}`] : []),
+    ...(isDemo && result.note ? [`note:${result.note}`] : []),
   ].join(' | ');
 
   return { content: [{ type: 'text' as const, text }] };
