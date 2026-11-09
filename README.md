@@ -37,9 +37,9 @@ Add this to your MCP config (Claude Desktop, Cursor, Windsurf):
 Then ask your agent:
 > "Write a new user record to the production database with admin privileges"
 
-Watch Reins block it and route it to your Telegram for approval.
+Watch Reins evaluate it and return the verdict. With the demo key you see the decision (pending/rejected/approved) in **dry-run mode** — no rows created, no notifications sent. Self-host to enable Telegram approvals and the immutable audit trail.
 
-**Note:** Demo key is read-only (evaluates policies, cannot modify). For production use, see Self-Hosted Setup below.
+**Note:** Demo key runs in dry-run mode: it evaluates policies and returns verdicts, but creates no rows and sends no notifications. For the full human-in-the-loop flow, see Self-Hosted Setup below.
 
 ## What Reins protects against
 
